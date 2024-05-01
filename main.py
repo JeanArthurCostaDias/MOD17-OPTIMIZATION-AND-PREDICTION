@@ -255,7 +255,7 @@ gpp_cax = pd.DataFrame(gpp_cax,columns=['cax'],index=index_date)
 
 gpp_todos = pd.concat([gpp_gui,gpp_peru,gpp_santarem,gpp_cax],axis=1)
 
-train, test = train_test_split(gpp_todos,test_size=0.10,shuffle=False,random_state=1)
+train, test = train_test_split(gpp_todos,test_size=0.15,shuffle=False,random_state=1)
 
 train_date = train.index
 test_date = test.index
@@ -381,7 +381,7 @@ y = gpp_geral[previsao] # Aqui fica o 8° valor da sequência
 z = gpp_geral[['localidade','cluster']]
 
 # Dividir os dados em treino e teste estratificados por 'localidade' e 'cluster'
-X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.17, stratify=z,random_state=1)
+X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.12, stratify=z,random_state=1)
 
 train_data = pd.concat([X_train, y_train], axis=1).reset_index(drop=True)
 X_train = train_data.drop(columns=previsao)
