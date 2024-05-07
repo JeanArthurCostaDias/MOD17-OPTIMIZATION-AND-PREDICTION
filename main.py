@@ -293,7 +293,46 @@ archs = [
 # for epocas in range(50,350,50):
 #     test_archs(epocas)
 
-def objective(trial):
+def objective_ConvTranPlus(trial):
+    # Categorical parameter
+    #arch_name = trial.suggest_categorical('arch',list(architectures.keys()))
+
+    fc_dropout = trial.suggest_float('fc_dropout', 0.1, 0.8)
+
+    encoder_dropout = trial.suggest_float('window_perc', 0.1, 0.8)
+
+    arch_config = {
+        'encoder_dropout': encoder_dropout,
+        'fc_dropout': fc_dropout,
+    }
+
+    #learning_rate_model = trial.suggest_float("learning_rate_model", 1e-5, 1e-2, log=True)  # search through all float values between 0.0 and 0.5 in log increment steps
+    Huber_delta = trial.suggest_float("Huber_delta", 1, 2)
+
+    standardize_sample = trial.suggest_categorical('by_sample', [True, False])
+    standardize_var = trial.suggest_categorical('by_var', [True, False])
+
+    arch = ConvTranPlus
+
+    learn = TSForecaster(X, y, splits=splits, path='models', tfms=tfms,
+                         batch_tfms=TSStandardize(by_sample=standardize_sample, by_var=standardize_var),arch=arch,
+                         arch_config= arch_config,
+                         #cbs=[ShowGraph(),PredictionDynamics(alpha=.5, size=75)],
+                         loss_func=HuberLoss('mean',Huber_delta),seed=1)
+    lr = learn.lr_find() # learning rate find
+    with ContextManagers([learn.no_logging(),learn.no_bar()]):
+        for epoch in range(50):
+            learn.fit_one_cycle(1, lr_max=lr.valley)
+            intermediate_value = learn.recorder.values[-1][1]
+            trial.report(intermediate_value, epoch)
+            # Check if trial should be pruned
+            if trial.should_prune():
+                raise optuna.TrialPruned()
+    with open("./optuna_tests/ConvTranPlus/{}.pickle".format(trial.number), "wb") as fout:
+        pickle.dump(learn, fout)
+    return intermediate_value
+
+def objective_Xception(trial):
     # Categorical parameter
     #arch_name = trial.suggest_categorical('arch',list(architectures.keys()))
 
@@ -320,25 +359,32 @@ def objective(trial):
                          loss_func=HuberLoss('mean',Huber_delta),seed=1)
 
     with ContextManagers([learn.no_logging(),learn.no_bar()]):
+        lr = learn.lr_find() # learning rate find
         for epoch in range(50):
-            lr = learn.lr_find() # learning rate find
             learn.fit_one_cycle(1, lr_max=lr.valley)
             intermediate_value = learn.recorder.values[-1][1]
             trial.report(intermediate_value, epoch)
             # Check if trial should be pruned
             if trial.should_prune():
                 raise optuna.TrialPruned()
-    with open("./optuna_tests/{}.pickle".format(trial.number), "wb") as fout:
+    with open("./optuna_tests/XceptionPlus/{}.pickle".format(trial.number), "wb") as fout:
         pickle.dump(learn, fout)
     return intermediate_value
 
-
-study = run_optuna_study(objective,sampler= optuna.samplers.TPESampler(n_startup_trials=200),
+study_conv = run_optuna_study(objective_ConvTranPlus,sampler= optuna.samplers.TPESampler(n_startup_trials=200),
                           pruner=optuna.pruners.HyperbandPruner(min_resource=1, max_resource=50, reduction_factor=3, bootstrap_count=5),
                           n_trials=1000,gc_after_trial=True,direction="minimize",show_plots=False)
 
-print(f"O Melhor modelo foi o de número {study.best_trial.number}")
-print(f""" Acesse a pasta optuna_tests/{study.best_trial.number}.pickle e coloque o modelo no github """)
+
+study_Xception = run_optuna_study(objective_Xception,sampler= optuna.samplers.TPESampler(n_startup_trials=200),
+                          pruner=optuna.pruners.HyperbandPruner(min_resource=1, max_resource=50, reduction_factor=3, bootstrap_count=5),
+                          n_trials=1000,gc_after_trial=True,direction="minimize",show_plots=False)
+
+print(f"O Melhor modelo foi o de número {study_conv.best_trial.number}")
+print(f""" Acesse a pasta optuna_tests/ConvTranPlus/{study_conv.best_trial.number}.pickle e coloque o modelo no github """)
+
+print(f"O Melhor modelo foi o de número {study_Xception.best_trial.number}")
+print(f""" Acesse a pasta optuna_tests/XceptionPlus/{study_Xception.best_trial.number}.pickle e coloque o modelo no github """)
 
 # with open("{}.pickle".format(study.best_trial.number), "rb") as fin:
 #     learner = pickle.load(fin)
