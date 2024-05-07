@@ -319,8 +319,9 @@ def objective_ConvTranPlus(trial):
                          arch_config= arch_config,
                          #cbs=[ShowGraph(),PredictionDynamics(alpha=.5, size=75)],
                          loss_func=HuberLoss('mean',Huber_delta),seed=1)
-    lr = learn.lr_find() # learning rate find
+    
     with ContextManagers([learn.no_logging(),learn.no_bar()]):
+        lr = learn.lr_find() # learning rate find
         for epoch in range(50):
             learn.fit_one_cycle(1, lr_max=lr.valley)
             intermediate_value = learn.recorder.values[-1][1]
