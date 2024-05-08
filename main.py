@@ -377,11 +377,11 @@ class studies:
 
     @staticmethod
     def get_con_study():
-        return run_optuna_study(studies._objective_ConvTranPlus,study_type='randomsearch',n_trials=1,gc_after_trial=True,direction="minimize",show_plots=False)
+        return run_optuna_study(studies._objective_ConvTranPlus,study_type='randomsearch',n_trials=1000,gc_after_trial=True,direction="minimize",show_plots=False)
 
     @staticmethod
     def get_xception_study():
-        return run_optuna_study(studies._objective_Xception,study_type='randomsearch', n_trials=1,gc_after_trial=True,direction="minimize",show_plots=False)
+        return run_optuna_study(studies._objective_Xception,study_type='randomsearch', n_trials=1000,gc_after_trial=True,direction="minimize",show_plots=False)
 
 
 study = studies()
