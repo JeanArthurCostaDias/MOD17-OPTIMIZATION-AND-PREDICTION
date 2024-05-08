@@ -116,6 +116,8 @@ def read_data():
             dados.append(pd.DataFrame(smoothed_csv,columns=[name],index=datetime))
         return dados
 
+set_seed(1, False)
+
 gpp_cax, gpp_peru, gpp_santarem = read_data()
 gpp_todos = pd.concat([gpp_peru,gpp_santarem,gpp_cax],axis=1)
 
