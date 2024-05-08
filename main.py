@@ -325,13 +325,8 @@ class studies:
                             loss_func=HuberLoss('mean',Huber_delta),seed=1)
                             
         with ContextManagers([learn.no_logging(),learn.no_bar()]):
-            for epoch in range(50):
-                learn.fit_one_cycle(1, lr_max=learning_rate_model)
-                intermediate_value = learn.recorder.values[-1][1]
-                trial.report(intermediate_value, epoch)
-                # Check if trial should be pruned
-                if trial.should_prune():
-                    raise optuna.TrialPruned()
+            learn.fit_one_cycle(50, lr_max=learning_rate_model)
+            intermediate_value = learn.recorder.values[-1][1]
         with open("./optuna_tests/ConvTranPlus/{}.pickle".format(trial.number), "wb") as fout:
             pickle.dump(learn, fout)
         return intermediate_value
@@ -366,13 +361,8 @@ class studies:
                             loss_func=HuberLoss('mean',Huber_delta),seed=1)
         
         with ContextManagers([learn.no_logging(),learn.no_bar()]):
-            for epoch in range(50):
-                learn.fit_one_cycle(1, lr_max=learning_rate_model)
+                learn.fit_one_cycle(50, lr_max=learning_rate_model)
                 intermediate_value = learn.recorder.values[-1][1]
-                trial.report(intermediate_value, epoch)
-                # Check if trial should be pruned
-                if trial.should_prune():
-                    raise optuna.TrialPruned()
         with open("./optuna_tests/XceptionPlus/{}.pickle".format(trial.number), "wb") as fout:
             pickle.dump(learn, fout)
         return intermediate_value
