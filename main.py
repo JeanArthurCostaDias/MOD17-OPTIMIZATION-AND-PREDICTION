@@ -293,99 +293,108 @@ archs = [
 # for epocas in range(50,350,50):
 #     test_archs(epocas)
 
-def objective_ConvTranPlus(trial):
-    # Categorical parameter
-    #arch_name = trial.suggest_categorical('arch',list(architectures.keys()))
+class studies:
 
-    fc_dropout = trial.suggest_float('fc_dropout', 0.1, 0.8)
+    @staticmethod
+    def _objective_ConvTranPlus(trial):
+        # Categorical parameter
+        #arch_name = trial.suggest_categorical('arch',list(architectures.keys()))
 
-    encoder_dropout = trial.suggest_float('window_perc', 0.1, 0.8)
+        fc_dropout = trial.suggest_float('fc_dropout', 0.1, 0.9)
 
-    arch_config = {
-        'encoder_dropout': encoder_dropout,
-        'fc_dropout': fc_dropout,
-    }
+        encoder_dropout = trial.suggest_float('encoder_dropout', 0.1, 0.9)
 
-    #learning_rate_model = trial.suggest_float("learning_rate_model", 1e-5, 1e-2, log=True)  # search through all float values between 0.0 and 0.5 in log increment steps
-    Huber_delta = trial.suggest_float("Huber_delta", 1, 2)
+        arch_config = {
+            'encoder_dropout': encoder_dropout,
+            'fc_dropout': fc_dropout,
+        }
+        
+        learning_rate_model = trial.suggest_float("learning_rate_model", 1e-5, 1e-2, log=True)  # search through all float values between 0.0 and 0.5 in log increment steps
+        Huber_delta = trial.suggest_float("Huber_delta", 1, 2)
+        
+        standardize_sample = trial.suggest_categorical('by_sample', [True, False])
+        standardize_var = trial.suggest_categorical('by_var', [True, False])
 
-    standardize_sample = trial.suggest_categorical('by_sample', [True, False])
-    standardize_var = trial.suggest_categorical('by_var', [True, False])
+        arch = ConvTranPlus
 
-    arch = ConvTranPlus
-
-    learn = TSForecaster(X, y, splits=splits, path='models', tfms=tfms,
-                         batch_tfms=TSStandardize(by_sample=standardize_sample, by_var=standardize_var),arch=arch,
-                         arch_config= arch_config,
-                         #cbs=[ShowGraph(),PredictionDynamics(alpha=.5, size=75)],
-                         loss_func=HuberLoss('mean',Huber_delta),seed=1)
-    
-    with ContextManagers([learn.no_logging(),learn.no_bar()]):
-        lr = learn.lr_find() # learning rate find
-        for epoch in range(50):
-            learn.fit_one_cycle(1, lr_max=lr.valley)
-            intermediate_value = learn.recorder.values[-1][1]
-            trial.report(intermediate_value, epoch)
-            # Check if trial should be pruned
-            if trial.should_prune():
-                raise optuna.TrialPruned()
-    with open("./optuna_tests/ConvTranPlus/{}.pickle".format(trial.number), "wb") as fout:
-        pickle.dump(learn, fout)
-    return intermediate_value
-
-def objective_Xception(trial):
-    # Categorical parameter
-    #arch_name = trial.suggest_categorical('arch',list(architectures.keys()))
-
-    nf = trial.suggest_int('nf', 16, 384)  # Ajustado para o intervalo original de 16 a 384
-    nb_filters = trial.suggest_categorical('nb_filters', [None, 16, 32, 64, 128, 256])  # Opções para nb_filters
-
-    arch_config = {
-        'nf': nf,
-        'nb_filters': nb_filters,
-    }
-
-    #learning_rate_model = trial.suggest_float("learning_rate_model", 1e-5, 1e-2, log=True)  # search through all float values between 0.0 and 0.5 in log increment steps
-    Huber_delta = trial.suggest_float("Huber_delta", 1, 2)
-
-    standardize_sample = trial.suggest_categorical('by_sample', [True, False])
-    standardize_var = trial.suggest_categorical('by_var', [True, False])
-
-    arch = XceptionTimePlus
-
-    learn = TSForecaster(X, y, splits=splits, path='models', tfms=tfms,
-                         batch_tfms=TSStandardize(by_sample=standardize_sample, by_var=standardize_var),arch=arch,
-                         arch_config= arch_config,
-                         #cbs=[ShowGraph(),PredictionDynamics(alpha=.5, size=75)],
-                         loss_func=HuberLoss('mean',Huber_delta),seed=1)
-
-    with ContextManagers([learn.no_logging(),learn.no_bar()]):
-        lr = learn.lr_find() # learning rate find
-        for epoch in range(50):
-            learn.fit_one_cycle(1, lr_max=lr.valley)
-            intermediate_value = learn.recorder.values[-1][1]
-            trial.report(intermediate_value, epoch)
-            # Check if trial should be pruned
-            if trial.should_prune():
-                raise optuna.TrialPruned()
-    with open("./optuna_tests/XceptionPlus/{}.pickle".format(trial.number), "wb") as fout:
-        pickle.dump(learn, fout)
-    return intermediate_value
-
-study_conv = run_optuna_study(objective_ConvTranPlus,sampler= optuna.samplers.TPESampler(n_startup_trials=200),
-                          pruner=optuna.pruners.HyperbandPruner(min_resource=1, max_resource=50, reduction_factor=3, bootstrap_count=5),
-                          n_trials=1000,gc_after_trial=True,direction="minimize",show_plots=False)
+        learn = TSForecaster(X, y, splits=splits, path='models', tfms=tfms,
+                            batch_tfms=TSStandardize(by_sample=standardize_sample, by_var=standardize_var),arch=arch,
+                            arch_config= arch_config,
+                            loss_func=HuberLoss('mean',Huber_delta),seed=1)
+                            
+        with ContextManagers([learn.no_logging(),learn.no_bar()]):
+            for epoch in range(50):
+                learn.fit_one_cycle(1, lr_max=learning_rate_model)
+                intermediate_value = learn.recorder.values[-1][1]
+                trial.report(intermediate_value, epoch)
+                # Check if trial should be pruned
+                if trial.should_prune():
+                    raise optuna.TrialPruned()
+        with open("./optuna_tests/ConvTranPlus/{}.pickle".format(trial.number), "wb") as fout:
+            pickle.dump(learn, fout)
+        return intermediate_value
 
 
-study_Xception = run_optuna_study(objective_Xception,sampler= optuna.samplers.TPESampler(n_startup_trials=200),
-                          pruner=optuna.pruners.HyperbandPruner(min_resource=1, max_resource=50, reduction_factor=3, bootstrap_count=5),
-                          n_trials=1000,gc_after_trial=True,direction="minimize",show_plots=False)
+    @staticmethod
+    def _objective_Xception(trial):
+        # Categorical parameter
+        #arch_name = trial.suggest_categorical('arch',list(architectures.keys()))
+
+        nf = trial.suggest_int('nf', 16, 384,log=True)  # Ajustado para o intervalo original de 16 a 384
+        bottleneck = trial.suggest_categorical('bottleneck',[True,False])  # Opções para nb_filters
+        ks = trial.suggest_int('ks', 10, 100)
+
+        arch_config = {
+            'nf': nf,
+            'bottleneck': bottleneck,
+            'ks': ks
+        }
+
+        learning_rate_model = trial.suggest_float("learning_rate_model", 1e-5, 1e-2, log=True)  # search through all float values between 0.0 and 0.5 in log increment steps
+        Huber_delta = trial.suggest_float("Huber_delta", 1, 2)
+        
+        standardize_sample = trial.suggest_categorical('by_sample', [True, False])
+        standardize_var = trial.suggest_categorical('by_var', [True, False])
+
+        arch = XceptionTimePlus
+
+        learn = TSForecaster(X, y, splits=splits, path='models', tfms=tfms,
+                            batch_tfms=TSStandardize(by_sample=standardize_sample, by_var=standardize_var),arch=arch,
+                            arch_config= arch_config,
+                            loss_func=HuberLoss('mean',Huber_delta),seed=1)
+        
+        with ContextManagers([learn.no_logging(),learn.no_bar()]):
+            for epoch in range(50):
+                learn.fit_one_cycle(1, lr_max=learning_rate_model)
+                intermediate_value = learn.recorder.values[-1][1]
+                trial.report(intermediate_value, epoch)
+                # Check if trial should be pruned
+                if trial.should_prune():
+                    raise optuna.TrialPruned()
+        with open("./optuna_tests/XceptionPlus/{}.pickle".format(trial.number), "wb") as fout:
+            pickle.dump(learn, fout)
+        return intermediate_value
+
+    @staticmethod
+    def get_con_study():
+        return run_optuna_study(studies._objective_ConvTranPlus,study_type='randomsearch',n_trials=1,gc_after_trial=True,direction="minimize",show_plots=False)
+
+    @staticmethod
+    def get_xception_study():
+        return run_optuna_study(studies._objective_Xception,study_type='randomsearch', n_trials=1,gc_after_trial=True,direction="minimize",show_plots=False)
+
+
+study = studies()
+
+study_xc = study.get_xception_study()
+study_conv = study.get_con_study()
+
+print(f"O Melhor modelo foi o de número {study_xc.best_trial.number}")
+print(f""" Acesse a pasta optuna_tests/XceptionPlus/{study_Xception.best_trial.number}.pickle e coloque o modelo no github """)
+
 
 print(f"O Melhor modelo foi o de número {study_conv.best_trial.number}")
 print(f""" Acesse a pasta optuna_tests/ConvTranPlus/{study_conv.best_trial.number}.pickle e coloque o modelo no github """)
-
-print(f"O Melhor modelo foi o de número {study_Xception.best_trial.number}")
-print(f""" Acesse a pasta optuna_tests/XceptionPlus/{study_Xception.best_trial.number}.pickle e coloque o modelo no github """)
 
 # with open("{}.pickle".format(study.best_trial.number), "rb") as fin:
 #     learner = pickle.load(fin)
