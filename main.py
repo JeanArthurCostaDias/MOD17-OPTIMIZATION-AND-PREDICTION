@@ -382,7 +382,7 @@ study_xc = study.get_xception_study()
 study_conv = study.get_con_study()
 
 print(f"O Melhor modelo foi o de número {study_xc.best_trial.number}")
-print(f""" Acesse a pasta optuna_tests/XceptionPlus/{study_Xception.best_trial.number}.pickle e coloque o modelo no github """)
+print(f""" Acesse a pasta optuna_tests/XceptionPlus/{study_xc.best_trial.number}.pickle e coloque o modelo no github """)
 
 
 print(f"O Melhor modelo foi o de número {study_conv.best_trial.number}")
