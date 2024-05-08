@@ -32,7 +32,7 @@ from minisom import MiniSom
 from tsai.all import *
 
 import optuna
-
+from optuna.integration import FastAIPruningCallback
 
 from fastai.vision.all import *
 from fastai.text.all import *
@@ -321,7 +321,7 @@ class studies:
 
         learn = TSForecaster(X, y, splits=splits, path='models', tfms=tfms,
                             batch_tfms=TSStandardize(by_sample=standardize_sample, by_var=standardize_var),arch=arch,
-                            arch_config= arch_config,
+                            arch_config= arch_config, cbs=FastAIPruningCallback(trial),
                             loss_func=HuberLoss('mean',Huber_delta),seed=1)
                             
         with ContextManagers([learn.no_logging(),learn.no_bar()]):
@@ -362,7 +362,7 @@ class studies:
 
         learn = TSForecaster(X, y, splits=splits, path='models', tfms=tfms,
                             batch_tfms=TSStandardize(by_sample=standardize_sample, by_var=standardize_var),arch=arch,
-                            arch_config= arch_config,
+                            arch_config= arch_config, cbs=FastAIPruningCallback(trial),
                             loss_func=HuberLoss('mean',Huber_delta),seed=1)
         
         with ContextManagers([learn.no_logging(),learn.no_bar()]):
