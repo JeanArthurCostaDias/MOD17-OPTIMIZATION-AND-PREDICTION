@@ -1,0 +1,8 @@
+Metadata-Version: 2.1
+Name: SOMperf
+Version: 0.2b0
+Summary: Self Organizing Maps performance metrics and quality indices
+Home-page: https://github.com/FlorentF9/SOMperf
+Author: Florent Forest
+Author-email: florent.forest9@gmail.com
+License-File: LICENSE
