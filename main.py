@@ -315,222 +315,179 @@ archs = [
 # for epocas in range(50,350,50):
 #     test_archs(epocas)
 
-class studies:
+def objective_TSTPlus(trial):
+    # Categorical parameter
+    #arch_name = trial.suggest_categorical('arch',list(architectures.keys()))
 
-    @staticmethod
-    def _objective_ConvTranPlus(trial):
-        # Categorical parameter
-        #arch_name = trial.suggest_categorical('arch',list(architectures.keys()))
+    fc_dropout = trial.suggest_float('fc_dropout', 0.0, 0.9)
 
-        fc_dropout = trial.suggest_float('fc_dropout', 0.1, 0.9)
+    n_layers = trial.suggest_int('n_layers', 2, 16)
 
-        encoder_dropout = trial.suggest_float('encoder_dropout', 0.1, 0.9)
+    n_heads = trial.suggest_int('n_heads', 4, 32)
 
-        arch_config = {
-            'encoder_dropout': encoder_dropout,
-            'fc_dropout': fc_dropout,
-        }
+    d_model = trial.suggest_int('d_model', n_heads, 256, step=n_heads)
 
-        learning_rate_model = trial.suggest_float("learning_rate_model", 1e-5, 1e-2, log=True)  # search through all float values between 0.0 and 0.5 in log increment steps
-        Huber_delta = trial.suggest_float("Huber_delta", 1, 2)
+    d_ff = trial.suggest_int('d_ff', 128, 512)
 
-        standardize_sample = trial.suggest_categorical('by_sample', [True, False])
-        standardize_var = trial.suggest_categorical('by_var', [True, False])
+    attn_dropout = trial.suggest_float('attn_dropout', 0.0, 0.9)
 
-        arch = ConvTranPlus
+    act = trial.suggest_categorical('act', ['ReLU', 'LeakyReLU', 'Mish', 'Swish','gelu'])
 
-        learn = TSForecaster(X, y, splits=splits, path='models', tfms=tfms,
-                            batch_tfms=TSStandardize(by_sample=standardize_sample, by_var=standardize_var),arch=arch,
-                            arch_config= arch_config, cbs=FastAIPruningCallback(trial),
-                            loss_func=HuberLoss('mean',Huber_delta),seed=1)
-
-        with ContextManagers([learn.no_logging(),learn.no_bar()]):
-            learn.fit_one_cycle(50, lr_max=learning_rate_model)
-            intermediate_value = learn.recorder.values[-1][1]
-        with open("./optuna_tests/ConvTranPlus/{}.pickle".format(trial.number), "wb") as fout:
-            pickle.dump(learn, fout)
-        return intermediate_value
+    dropout = trial.suggest_float('dropout', 0.0, 0.9)
 
 
-    @staticmethod
-    def _objective_Xception(trial):
-        # Categorical parameter
-        #arch_name = trial.suggest_categorical('arch',list(architectures.keys()))
+    arch_config = {'fc_dropout':fc_dropout,'n_layers':n_layers,'n_heads':n_heads,'d_model':d_model,'d_ff':d_ff,'attn_dropout':attn_dropout,'act':act,'dropout':dropout}
 
-        nf = trial.suggest_int('nf', 16, 384,log=True)  # Ajustado para o intervalo original de 16 a 384
-        bottleneck = trial.suggest_categorical('bottleneck',[True,False])  # Opções para nb_filters
-        ks = trial.suggest_int('ks', 10, 100)
+    
+    learning_rate_model = trial.suggest_float("learning_rate_model", 1e-5, 1e-2, log=True)  # search through all float values between 0.0 and 0.5 in log increment steps
+    Huber_delta = trial.suggest_float("Huber_delta", 1, 2)
+    
+    standardize_sample = trial.suggest_categorical('by_sample', [True, False])
+    standardize_var = trial.suggest_categorical('by_var', [True, False])
 
-        arch_config = {
-            'nf': nf,
-            'bottleneck': bottleneck,
-            'ks': ks
-        }
+    arch = TSTPlus
 
-        learning_rate_model = trial.suggest_float("learning_rate_model", 1e-5, 1e-2, log=True)  # search through all float values between 0.0 and 0.5 in log increment steps
-        Huber_delta = trial.suggest_float("Huber_delta", 1, 2)
+    learn = TSForecaster(X, y, splits=splits, path='models', tfms=tfms,
+                        batch_tfms=TSStandardize(by_sample=standardize_sample, by_var=standardize_var),arch=arch,
+                        arch_config= arch_config,cbs=optuna.integration.FastAIPruningCallback(trial),
+                        loss_func=HuberLoss('mean',Huber_delta),seed=1)
+                        
+    with ContextManagers([learn.no_logging(),learn.no_bar()]):
+        learn.fit_one_cycle(50, lr_max=learning_rate_model)
+        intermediate_value = learn.recorder.values[-1][1]
+    with open("./optuna_tests/TSTPlus/{}.pickle".format(trial.number), "wb") as fout:
+        pickle.dump(learn, fout)
+    return intermediate_value
 
-        standardize_sample = trial.suggest_categorical('by_sample', [True, False])
-        standardize_var = trial.suggest_categorical('by_var', [True, False])
+study_tst = run_optuna_study(objective_TSTPlus,sampler= optuna.samplers.TPESampler(n_startup_trials=250),n_trials=1000,gc_after_trial=True,direction="minimize",show_plots=False)
 
-        arch = XceptionTimePlus
-
-        learn = TSForecaster(X, y, splits=splits, path='models', tfms=tfms,
-                            batch_tfms=TSStandardize(by_sample=standardize_sample, by_var=standardize_var),arch=arch,
-                            arch_config= arch_config, cbs=FastAIPruningCallback(trial),
-                            loss_func=HuberLoss('mean',Huber_delta),seed=1)
-
-        with ContextManagers([learn.no_logging(),learn.no_bar()]):
-                learn.fit_one_cycle(50, lr_max=learning_rate_model)
-                intermediate_value = learn.recorder.values[-1][1]
-        with open("./optuna_tests/XceptionPlus/{}.pickle".format(trial.number), "wb") as fout:
-            pickle.dump(learn, fout)
-        return intermediate_value
-
-    @staticmethod
-    def get_con_study():
-        return run_optuna_study(studies._objective_ConvTranPlus,study_type='randomsearch',n_trials=1000,gc_after_trial=True,direction="minimize",show_plots=False,seed=1)
-
-    @staticmethod
-    def get_xception_study():
-        return run_optuna_study(studies._objective_Xception,study_type='randomsearch', n_trials=1000,gc_after_trial=True,direction="minimize",show_plots=False,seed=1)
+print(f"O Melhor modelo foi o de número {study_tst.best_trial.number}")
+print(f""" Acesse a pasta optuna_tests/TSTPlus/{study_tst.best_trial.number}.pickle e coloque o modelo no github """)
 
 
-study = studies()
-
-study_xc = study.get_xception_study()
-study_conv = study.get_con_study()
-
-print(f"O Melhor modelo foi o de número {study_xc.best_trial.number}")
-print(f""" Acesse a pasta optuna_tests/XceptionPlus/{study_xc.best_trial.number}.pickle e coloque o modelo no github """)
+# import pathlib
+# temp = pathlib.PosixPath
+# pathlib.PosixPath = pathlib.WindowsPath
 
 
-print(f"O Melhor modelo foi o de número {study_conv.best_trial.number}")
-print(f""" Acesse a pasta optuna_tests/ConvTranPlus/{study_conv.best_trial.number}.pickle e coloque o modelo no github """)
+# with open(f"./melhor_modelo_optuna/{805}.pickle", "rb") as fin:
+#     learner = pickle.load(fin)
 
-import pathlib
-temp = pathlib.PosixPath
-pathlib.PosixPath = pathlib.WindowsPath
+# raw_preds, target, preds = learner.get_X_preds(X[splits[2]], y[splits[2]])
 
+# preds_df = pd.concat([pd.DataFrame(raw_preds),y_labels.to_frame()],axis=1)
+# target_df = pd.concat([pd.DataFrame(y_test),y_labels.to_frame()],axis=1)
 
-with open(f"./melhor_modelo_optuna/{805}.pickle", "rb") as fin:
-    learner = pickle.load(fin)
+# dfs_preds = {}
+# dfs_target = {}
 
-raw_preds, target, preds = learner.get_X_preds(X[splits[2]], y[splits[2]])
+# for localidade in preds_df['localidade'].unique():
+#     dfs_preds[localidade] = preds_df[preds_df['localidade'] == localidade]
 
-preds_df = pd.concat([pd.DataFrame(raw_preds),y_labels.to_frame()],axis=1)
-target_df = pd.concat([pd.DataFrame(y_test),y_labels.to_frame()],axis=1)
+# for localidade in target_df['localidade'].unique():
+#     dfs_target[localidade] = target_df[target_df['localidade'] == localidade]
 
-dfs_preds = {}
-dfs_target = {}
+# # Acessando os DataFrames separados
 
-for localidade in preds_df['localidade'].unique():
-    dfs_preds[localidade] = preds_df[preds_df['localidade'] == localidade]
+# df_peru_pred = dfs_preds['peru'].drop('localidade',axis=1)
+# df_santarem_pred = dfs_preds['santarem'].drop('localidade',axis=1)
+# df_caxiuana_pred = dfs_preds['caxiuana'].drop('localidade',axis=1)
 
-for localidade in target_df['localidade'].unique():
-    dfs_target[localidade] = target_df[target_df['localidade'] == localidade]
+# df_peru_target = dfs_target['peru'].drop('localidade',axis=1)
+# df_santarem_target = dfs_target['santarem'].drop('localidade',axis=1)
+# df_caxiuana_target = dfs_target['caxiuana'].drop('localidade',axis=1)
 
-# Acessando os DataFrames separados
+# datas_conj_teste = gpp_peru_test.loc[gpp_peru_test['peru'].isin(y[splits[2]].flatten())].index
+# datas_conj_teste = pd.to_datetime(datas_conj_teste)
 
-df_peru_pred = dfs_preds['peru'].drop('localidade',axis=1)
-df_santarem_pred = dfs_preds['santarem'].drop('localidade',axis=1)
-df_caxiuana_pred = dfs_preds['caxiuana'].drop('localidade',axis=1)
+# import matplotlib.dates as mdates
 
-df_peru_target = dfs_target['peru'].drop('localidade',axis=1)
-df_santarem_target = dfs_target['santarem'].drop('localidade',axis=1)
-df_caxiuana_target = dfs_target['caxiuana'].drop('localidade',axis=1)
+# def get_summary(df_pred,df_target):
+#     results = {}
+#     for i in dfs_preds:
+#         mae_test = mean_absolute_error(y_pred=df_pred[i].drop('localidade',axis=1),y_true=df_target[i].drop('localidade',axis=1))
+#         mse_test = mean_squared_error(y_pred=df_pred[i].drop('localidade',axis=1),y_true=df_target[i].drop('localidade',axis=1))
+#         rmse_test = np.sqrt(mse_test)
+#         r2_test = r2_score(y_pred=df_pred[i].drop('localidade',axis=1),y_true=df_target[i].drop('localidade',axis=1))
+#         results[i] = [r2_test,mae_test,rmse_test,np.corrcoef(df_pred[i].drop('localidade',axis=1).values.flatten(), df_target[i].drop('localidade',axis=1).values.flatten())[0][1]]
 
-datas_conj_teste = gpp_peru_test.loc[gpp_peru_test['peru'].isin(y[splits[2]].flatten())].index
-datas_conj_teste = pd.to_datetime(datas_conj_teste)
+#         residuos = df_pred[i].drop('localidade',axis=1).values - df_target[i].drop('localidade',axis=1).values
+#         plt.figure(figsize=(30, 9))
+#         plt.subplot(2, 1, 1)
 
-import matplotlib.dates as mdates
+#         plt.plot(datas_conj_teste, df_pred[i].drop('localidade',axis=1).values.flatten(), label='Previsões', alpha=1)
+#         plt.plot(datas_conj_teste, df_target[i].drop('localidade',axis=1).values.flatten(), label='Valores reais', alpha=0.7)
+#         plt.gca().xaxis.set_major_locator(mdates.MonthLocator(bymonth=(1, 7)))
+#         plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%b'))
 
-def get_summary(df_pred,df_target):
-    results = {}
-    for i in dfs_preds:
-        mae_test = mean_absolute_error(y_pred=df_pred[i].drop('localidade',axis=1),y_true=df_target[i].drop('localidade',axis=1))
-        mse_test = mean_squared_error(y_pred=df_pred[i].drop('localidade',axis=1),y_true=df_target[i].drop('localidade',axis=1))
-        rmse_test = np.sqrt(mse_test)
-        r2_test = r2_score(y_pred=df_pred[i].drop('localidade',axis=1),y_true=df_target[i].drop('localidade',axis=1))
-        results[i] = [r2_test,mae_test,rmse_test,np.corrcoef(df_pred[i].drop('localidade',axis=1).values.flatten(), df_target[i].drop('localidade',axis=1).values.flatten())[0][1]]
+#         for label in plt.gca().get_xticklabels(which='major'):
+#             label.set(rotation=30, horizontalalignment='right')
 
-        residuos = df_pred[i].drop('localidade',axis=1).values - df_target[i].drop('localidade',axis=1).values
-        plt.figure(figsize=(30, 9))
-        plt.subplot(2, 1, 1)
+#         plt.xlabel('Índice da observação')
+#         plt.ylabel('Valor')
+#         plt.title(f'Comparação entre Previsões e Valores Reais ({i})')
+#         plt.legend()
+#         plt.grid(True)
 
-        plt.plot(datas_conj_teste, df_pred[i].drop('localidade',axis=1).values.flatten(), label='Previsões', alpha=1)
-        plt.plot(datas_conj_teste, df_target[i].drop('localidade',axis=1).values.flatten(), label='Valores reais', alpha=0.7)
-        plt.gca().xaxis.set_major_locator(mdates.MonthLocator(bymonth=(1, 7)))
-        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%b'))
+#         plt.subplot(2, 1, 2)
+#         plt.plot(datas_conj_teste,residuos.flatten(), label='Resíduos', color='red')
 
-        for label in plt.gca().get_xticklabels(which='major'):
-            label.set(rotation=30, horizontalalignment='right')
+#         plt.gca().xaxis.set_major_locator(mdates.MonthLocator(bymonth=(1, 7)))
+#         plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%b'))
 
-        plt.xlabel('Índice da observação')
-        plt.ylabel('Valor')
-        plt.title(f'Comparação entre Previsões e Valores Reais ({i})')
-        plt.legend()
-        plt.grid(True)
+#         for label in plt.gca().get_xticklabels(which='major'):
+#             label.set(rotation=30, horizontalalignment='right')
 
-        plt.subplot(2, 1, 2)
-        plt.plot(datas_conj_teste,residuos.flatten(), label='Resíduos', color='red')
+#         plt.xlabel('Índice da observação')
+#         plt.ylabel('Resíduo')
+#         plt.title(f'Resíduos {i} (Previsões - Valores reais)')
+#         plt.legend()
+#         plt.grid(True)
 
-        plt.gca().xaxis.set_major_locator(mdates.MonthLocator(bymonth=(1, 7)))
-        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%b'))
+#         # Seu código para mostrar os gráficos
+#         plt.tight_layout()
+#         plt.show()
 
-        for label in plt.gca().get_xticklabels(which='major'):
-            label.set(rotation=30, horizontalalignment='right')
+#         residuos_flatten = residuos.flatten()
 
-        plt.xlabel('Índice da observação')
-        plt.ylabel('Resíduo')
-        plt.title(f'Resíduos {i} (Previsões - Valores reais)')
-        plt.legend()
-        plt.grid(True)
+#         # Criar figura e eixos para o subplot
+#         fig, axes = plt.subplots(1, 2, figsize=(12, 6))
 
-        # Seu código para mostrar os gráficos
-        plt.tight_layout()
-        plt.show()
+#         # Plot do residual plot
+#         sns.scatterplot(x=df_pred[i].drop('localidade',axis=1).values.flatten(), y=residuos_flatten, ax=axes[0])
+#         axes[0].set_title(f'Residual Plot ({i})')
+#         axes[0].set_xlabel('Valores Previstos')
+#         axes[0].set_ylabel('Resíduos')
 
-        residuos_flatten = residuos.flatten()
+#         # Plot do histograma dos resíduos
+#         sns.histplot(residuos_flatten, ax=axes[1])
+#         axes[1].set_title(f'Histograma dos Resíduos ({i})')
+#         axes[1].set_xlabel('Resíduos')
+#         axes[1].set_ylabel('Contagem')
 
-        # Criar figura e eixos para o subplot
-        fig, axes = plt.subplots(1, 2, figsize=(12, 6))
-
-        # Plot do residual plot
-        sns.scatterplot(x=df_pred[i].drop('localidade',axis=1).values.flatten(), y=residuos_flatten, ax=axes[0])
-        axes[0].set_title(f'Residual Plot ({i})')
-        axes[0].set_xlabel('Valores Previstos')
-        axes[0].set_ylabel('Resíduos')
-
-        # Plot do histograma dos resíduos
-        sns.histplot(residuos_flatten, ax=axes[1])
-        axes[1].set_title(f'Histograma dos Resíduos ({i})')
-        axes[1].set_xlabel('Resíduos')
-        axes[1].set_ylabel('Contagem')
-
-        # Ajuste o layout
-        plt.tight_layout()
-        plt.show()
+#         # Ajuste o layout
+#         plt.tight_layout()
+#         plt.show()
 
 
-    return pd.DataFrame(results,index=['R²','MAE','RMSE','Corr'])
+#     return pd.DataFrame(results,index=['R²','MAE','RMSE','Corr'])
 
-df_regioes = get_summary(dfs_preds,dfs_target)
+# df_regioes = get_summary(dfs_preds,dfs_target)
 
-mae_geral = mean_absolute_error(raw_preds,target)
-mse_geral = mean_squared_error(raw_preds,target)
-rmse_geral = np.sqrt(mse_geral)
-r2_geral = r2_score(y_pred=raw_preds,y_true=target)
+# mae_geral = mean_absolute_error(raw_preds,target)
+# mse_geral = mean_squared_error(raw_preds,target)
+# rmse_geral = np.sqrt(mse_geral)
+# r2_geral = r2_score(y_pred=raw_preds,y_true=target)
 
-resultados_geral = {}
-resultados_geral['Geral'] = [r2_geral,mae_geral,mse_geral,np.corrcoef(raw_preds.flatten(), target.flatten())[0][1]]
-resultados_geral = pd.DataFrame(resultados_geral,index=df_regioes.index)
+# resultados_geral = {}
+# resultados_geral['Geral'] = [r2_geral,mae_geral,mse_geral,np.corrcoef(raw_preds.flatten(), target.flatten())[0][1]]
+# resultados_geral = pd.DataFrame(resultados_geral,index=df_regioes.index)
 
-df_geral = pd.concat([df_regioes,resultados_geral],axis=1)
-display(df_geral)
+# df_geral = pd.concat([df_regioes,resultados_geral],axis=1)
+# display(df_geral)
 
-gpp_todos.loc[test_date].values.flatten()
+# gpp_todos.loc[test_date].values.flatten()
 
-learner.recorder.values
+# learner.recorder.values
 
-learner.smooth_loss
+# learner.smooth_loss
