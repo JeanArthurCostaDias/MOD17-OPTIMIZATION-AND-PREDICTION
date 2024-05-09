@@ -357,7 +357,7 @@ def objective_TSTPlus(trial):
         pickle.dump(learn, fout)
     return intermediate_value
 
-study_tst = run_optuna_study(objective_TSTPlus,sampler=optuna.samplers.TPESampler(n_startup_trials=1000,seed=1),n_trials=5000,gc_after_trial=True,direction="minimize",show_plots=False)
+study_tst = run_optuna_study(objective_TSTPlus,sampler=optuna.samplers.TPESampler(n_startup_trials=2000,seed=1),n_trials=5000,gc_after_trial=True,direction="minimize",show_plots=False)
 
 print(f"O Melhor modelo foi o de número {study_tst.best_trial.number}")
 print(f""" Acesse a pasta optuna_tests/TSTPlus/{study_tst.best_trial.number}.pickle e coloque o modelo no github """)
