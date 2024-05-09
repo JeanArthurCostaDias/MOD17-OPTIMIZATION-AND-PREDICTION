@@ -331,12 +331,10 @@ def objective_TSTPlus(trial):
 
     attn_dropout = trial.suggest_float('attn_dropout', 0.0, 0.9)
 
-    act = trial.suggest_categorical('act', ['ReLU', 'LeakyReLU', 'Mish', 'Swish','gelu'])
-
     dropout = trial.suggest_float('dropout', 0.0, 0.9)
 
 
-    arch_config = {'fc_dropout':fc_dropout,'n_layers':n_layers,'n_heads':n_heads,'d_model':d_model,'d_ff':d_ff,'attn_dropout':attn_dropout,'act':act,'dropout':dropout}
+    arch_config = {'fc_dropout':fc_dropout,'n_layers':n_layers,'n_heads':n_heads,'d_model':d_model,'d_ff':d_ff,'attn_dropout':attn_dropout,'dropout':dropout}
 
     
     learning_rate_model = trial.suggest_float("learning_rate_model", 1e-5, 1e-2, log=True)  # search through all float values between 0.0 and 0.5 in log increment steps
