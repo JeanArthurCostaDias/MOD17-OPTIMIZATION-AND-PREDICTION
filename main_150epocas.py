@@ -58,7 +58,9 @@ def cwd(path: str) -> None:
 
     """
     Context manager para mudar o diretório de trabalho.
-    Mantém o diretório original após a execução do bloco de código.
+    Mantém o diretório original após a execução do bloc
+    
+    o de código.
     """
 
     oldpwd = os.getcwd()
@@ -117,9 +119,9 @@ def read_data():
             datetime = df['index']
             df.index = pd.to_datetime(datetime)
             df = df['GPP']
-            smoothed_csv = ExponentialSmoothing(df, initialization_method="heuristic",freq='D').fit(optimized=True).fittedvalues
-            dados.append(pd.DataFrame(smoothed_csv,columns=[name],index=datetime))
+            dados.append(pd.DataFrame(df.values,columns=[name],index=datetime))
         return dados
+print(default_device())
 
 gpp_cax, gpp_peru, gpp_santarem = read_data()
 gpp_todos = pd.concat([gpp_peru,gpp_santarem,gpp_cax],axis=1)
@@ -187,8 +189,6 @@ cax_df['localidade'] = 'caxiuana'
 gpp_geral = pd.concat([peru_df,santarem_df,cax_df]).reset_index().drop('index',axis=1)
 
 """### Geração de Características das séries"""
-
-get_ts_features
 
 previsao = [f'previsao {i}' for i in range(0,8)]
 
@@ -278,7 +278,7 @@ get_splits_len(splits) # [1872, 401, 408] ~= 70%,15%,15%
 archs = [
          (XCMPlus, {}),
          (ConvTranPlus, {}),
-         (TSSequencerPlus, {}),      # Arquiteturas que estou testando (ainda arbitrário).
+         (TSSequencerPlus, {}),      # Arquiteturas que estou testando.
          (RNNPlus, {}),                         #Os dicionários do lado do nome de cada arquitetura são específicos dos parâmetros
          (ResNetPlus, {}),                              # EX: (LSTM, {'n_layers':1, 'bidirectional': False})
          (InceptionTimePlus, {}),
@@ -290,36 +290,30 @@ archs = [
 
         ]
 
-# def test_archs(epochs):
-#     results = pd.DataFrame(columns=['arch', 'hyperparams', 'total params', 'train loss', 'valid loss', 'mae_valid','rmse_valid','mae_test','rmse_test','time'])
-#     i=0
-#     for _, (arch, k) in enumerate(archs):
-#         print(arch.__name__)
-#         learn = TSForecaster(X, y, splits=splits, path='models', tfms=tfms, batch_tfms=TSStandardize(), arch=arch, metrics=[mae,rmse],device=default_device(),loss_func=HuberLoss('mean'))
-#         lr = learn.lr_find() # learning rate find
-#         start = time.time()
-#         learn.fit_one_cycle(epochs, lr_max=lr.valley)
-#         elapsed = time.time() - start
-#         vals = learn.recorder.values[-1]
-#         raw_preds, target, _ = learn.get_X_preds(X[splits[2]], y[splits[2]])
-#         mae_test = mean_absolute_error(raw_preds.flatten(),target.flatten())
-#         mse_test = mean_squared_error(raw_preds.flatten(),target.flatten())
-#         rmse_test = np.sqrt(mse_test)
-#         results.loc[i] = [arch.__name__, k, count_parameters(learn.model), vals[0], vals[1], vals[2],vals[3],mae_test,rmse_test, int(elapsed)]
-#         results.sort_values(by=['mae_valid'], ascending=False, kind='stable', ignore_index=True, inplace=True)
-#         clear_output()
-#         display(results)
-#         i+=1
-#     results.to_csv(f'resultados_{epochs}_epocas.csv')
+def test_archs(epochs):
+    results = pd.DataFrame(columns=['arch', 'hyperparams', 'total params', 'train loss', 'valid loss','time'])
+    i=0
+    for _, (arch, k) in enumerate(archs):
+        print(arch.__name__)
+        learn = TSForecaster(X, y, splits=splits, path='models', tfms=tfms, batch_tfms=TSStandardize(), arch=arch,device=default_device(),loss_func=HuberLoss('mean'))
+        lr = learn.lr_find() # learning rate find
+        start = time.time()
+        learn.fit_one_cycle(epochs, lr_max=lr.valley)
+        elapsed = time.time() - start
+        vals = learn.recorder.values[-1]
+        results.loc[i] = [arch.__name__, k, count_parameters(learn.model), vals[0], vals[1], int(elapsed)]
+        results.sort_values(by=['valid loss'], ascending=False, kind='stable', ignore_index=True, inplace=True)
+        clear_output()
+        display(results)
+        i+=1
+    results.to_csv(f'./optuna_tests/resultados_{epochs}_epocas.csv')
 
-# for epocas in range(50,350,50):
-#     test_archs(epocas)
+for epocas in range(100,300,50):
+    test_archs(epocas)
 
 def objective_Xception(trial):
-    # Categorical parameter
-    #arch_name = trial.suggest_categorical('arch',list(architectures.keys()))
-
-    nf = trial.suggest_int('nf', 16, 384)  # Ajustado para o intervalo original de 16 a 384
+    
+    nf = trial.suggest_int('nf', 16, 384)
     adaptive_size = trial.suggest_int('adaptive_size', 10, 200)
 
     arch_config = {
@@ -344,7 +338,11 @@ def objective_Xception(trial):
             learn.fit_one_cycle(150, lr_max=learning_rate_model)
             intermediate_value = learn.recorder.values[-1][1]
 
-    file_path = "./optuna_tests/XceptionPlus/{}.pickle".format(trial.number)
+    folder_path = "./optuna_tests/XceptionPlus/"
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
+    
+    file_path = os.path.join(folder_path, "{}.pickle".format(trial.number))
     if os.path.exists(file_path):
         os.remove(file_path)
 
@@ -359,130 +357,3 @@ study_xc = run_optuna_study(objective_Xception,sampler= optuna.samplers.TPESampl
 
 print(f"O Melhor modelo foi o de número {study_xc.best_trial.number}")
 print(f""" Acesse a pasta optuna_tests/XceptionPlus/{study_xc.best_trial.number}.pickle e coloque o modelo no github """)
-
-# import pathlib
-# temp = pathlib.PosixPath
-# pathlib.PosixPath = pathlib.WindowsPath
-
-
-# with open(f"./melhor_modelo_optuna/{805}.pickle", "rb") as fin:
-#     learner = pickle.load(fin)
-
-# raw_preds, target, preds = learner.get_X_preds(X[splits[2]], y[splits[2]])
-
-# preds_df = pd.concat([pd.DataFrame(raw_preds),y_labels.to_frame()],axis=1)
-# target_df = pd.concat([pd.DataFrame(y_test),y_labels.to_frame()],axis=1)
-
-# dfs_preds = {}
-# dfs_target = {}
-
-# for localidade in preds_df['localidade'].unique():
-#     dfs_preds[localidade] = preds_df[preds_df['localidade'] == localidade]
-
-# for localidade in target_df['localidade'].unique():
-#     dfs_target[localidade] = target_df[target_df['localidade'] == localidade]
-
-# # Acessando os DataFrames separados
-
-# df_peru_pred = dfs_preds['peru'].drop('localidade',axis=1)
-# df_santarem_pred = dfs_preds['santarem'].drop('localidade',axis=1)
-# df_caxiuana_pred = dfs_preds['caxiuana'].drop('localidade',axis=1)
-
-# df_peru_target = dfs_target['peru'].drop('localidade',axis=1)
-# df_santarem_target = dfs_target['santarem'].drop('localidade',axis=1)
-# df_caxiuana_target = dfs_target['caxiuana'].drop('localidade',axis=1)
-
-# datas_conj_teste = gpp_peru_test.loc[gpp_peru_test['peru'].isin(y[splits[2]].flatten())].index
-# datas_conj_teste = pd.to_datetime(datas_conj_teste)
-
-# import matplotlib.dates as mdates
-
-# def get_summary(df_pred,df_target):
-#     results = {}
-#     for i in dfs_preds:
-#         mae_test = mean_absolute_error(y_pred=df_pred[i].drop('localidade',axis=1),y_true=df_target[i].drop('localidade',axis=1))
-#         mse_test = mean_squared_error(y_pred=df_pred[i].drop('localidade',axis=1),y_true=df_target[i].drop('localidade',axis=1))
-#         rmse_test = np.sqrt(mse_test)
-#         r2_test = r2_score(y_pred=df_pred[i].drop('localidade',axis=1),y_true=df_target[i].drop('localidade',axis=1))
-#         results[i] = [r2_test,mae_test,rmse_test,np.corrcoef(df_pred[i].drop('localidade',axis=1).values.flatten(), df_target[i].drop('localidade',axis=1).values.flatten())[0][1]]
-
-#         residuos = df_pred[i].drop('localidade',axis=1).values - df_target[i].drop('localidade',axis=1).values
-#         plt.figure(figsize=(30, 9))
-#         plt.subplot(2, 1, 1)
-
-#         plt.plot(datas_conj_teste, df_pred[i].drop('localidade',axis=1).values.flatten(), label='Previsões', alpha=1)
-#         plt.plot(datas_conj_teste, df_target[i].drop('localidade',axis=1).values.flatten(), label='Valores reais', alpha=0.7)
-#         plt.gca().xaxis.set_major_locator(mdates.MonthLocator(bymonth=(1, 7)))
-#         plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%b'))
-
-#         for label in plt.gca().get_xticklabels(which='major'):
-#             label.set(rotation=30, horizontalalignment='right')
-
-#         plt.xlabel('Índice da observação')
-#         plt.ylabel('Valor')
-#         plt.title(f'Comparação entre Previsões e Valores Reais ({i})')
-#         plt.legend()
-#         plt.grid(True)
-
-#         plt.subplot(2, 1, 2)
-#         plt.plot(datas_conj_teste,residuos.flatten(), label='Resíduos', color='red')
-
-#         plt.gca().xaxis.set_major_locator(mdates.MonthLocator(bymonth=(1, 7)))
-#         plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%b'))
-
-#         for label in plt.gca().get_xticklabels(which='major'):
-#             label.set(rotation=30, horizontalalignment='right')
-
-#         plt.xlabel('Índice da observação')
-#         plt.ylabel('Resíduo')
-#         plt.title(f'Resíduos {i} (Previsões - Valores reais)')
-#         plt.legend()
-#         plt.grid(True)
-
-#         # Seu código para mostrar os gráficos
-#         plt.tight_layout()
-#         plt.show()
-
-#         residuos_flatten = residuos.flatten()
-
-#         # Criar figura e eixos para o subplot
-#         fig, axes = plt.subplots(1, 2, figsize=(12, 6))
-
-#         # Plot do residual plot
-#         sns.scatterplot(x=df_pred[i].drop('localidade',axis=1).values.flatten(), y=residuos_flatten, ax=axes[0])
-#         axes[0].set_title(f'Residual Plot ({i})')
-#         axes[0].set_xlabel('Valores Previstos')
-#         axes[0].set_ylabel('Resíduos')
-
-#         # Plot do histograma dos resíduos
-#         sns.histplot(residuos_flatten, ax=axes[1])
-#         axes[1].set_title(f'Histograma dos Resíduos ({i})')
-#         axes[1].set_xlabel('Resíduos')
-#         axes[1].set_ylabel('Contagem')
-
-#         # Ajuste o layout
-#         plt.tight_layout()
-#         plt.show()
-
-
-#     return pd.DataFrame(results,index=['R²','MAE','RMSE','Corr'])
-
-# df_regioes = get_summary(dfs_preds,dfs_target)
-
-# mae_geral = mean_absolute_error(raw_preds,target)
-# mse_geral = mean_squared_error(raw_preds,target)
-# rmse_geral = np.sqrt(mse_geral)
-# r2_geral = r2_score(y_pred=raw_preds,y_true=target)
-
-# resultados_geral = {}
-# resultados_geral['Geral'] = [r2_geral,mae_geral,mse_geral,np.corrcoef(raw_preds.flatten(), target.flatten())[0][1]]
-# resultados_geral = pd.DataFrame(resultados_geral,index=df_regioes.index)
-
-# df_geral = pd.concat([df_regioes,resultados_geral],axis=1)
-# display(df_geral)
-
-# gpp_todos.loc[test_date].values.flatten()
-
-# learner.recorder.values
-
-# learner.smooth_loss
