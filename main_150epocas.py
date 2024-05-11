@@ -121,7 +121,10 @@ def read_data():
             df = df['GPP']
             dados.append(pd.DataFrame(df.values,columns=[name],index=datetime))
         return dados
-print(default_device())
+
+use_cuda = torch.cuda.is_available()
+device = torch.device("cuda" if use_cuda else "cpu")
+print("Device: ",device)
 
 gpp_cax, gpp_peru, gpp_santarem = read_data()
 gpp_todos = pd.concat([gpp_peru,gpp_santarem,gpp_cax],axis=1)
@@ -291,24 +294,24 @@ archs = [
         ]
 
 def test_archs(epochs):
-    results = pd.DataFrame(columns=['arch', 'hyperparams', 'total params', 'train loss', 'valid loss','time'])
+    results = pd.DataFrame(columns=['arch', 'hyperparams', 'total params', 'train loss', 'valid loss', 'mae_valid','rmse_valid','mae_test','rmse_test','time'])
     i=0
     for _, (arch, k) in enumerate(archs):
         print(arch.__name__)
-        learn = TSForecaster(X, y, splits=splits, path='models', tfms=tfms, batch_tfms=TSStandardize(), arch=arch,device=default_device(),loss_func=HuberLoss('mean'))
+        learn = TSForecaster(X, y, splits=splits, path='models', tfms=tfms, batch_tfms=TSStandardize(), arch=arch, metrics=[mae,rmse],device=device,loss_func=HuberLoss('mean'))        
         lr = learn.lr_find() # learning rate find
         start = time.time()
         learn.fit_one_cycle(epochs, lr_max=lr.valley)
         elapsed = time.time() - start
         vals = learn.recorder.values[-1]
-        results.loc[i] = [arch.__name__, k, count_parameters(learn.model), vals[0], vals[1], int(elapsed)]
+        results.loc[i] = [arch.__name__, k, count_parameters(learn.model), vals[0], vals[1], vals[2],vals[3], int(elapsed)]
         results.sort_values(by=['valid loss'], ascending=False, kind='stable', ignore_index=True, inplace=True)
         clear_output()
         display(results)
         i+=1
     results.to_csv(f'./optuna_tests/resultados_{epochs}_epocas.csv')
 
-for epocas in range(100,300,50):
+for epocas in range(100,350,50):
     test_archs(epocas)
 
 def objective_Xception(trial):
@@ -331,12 +334,12 @@ def objective_Xception(trial):
 
     learn = TSForecaster(X, y, splits=splits, path='models', tfms=tfms,
                         batch_tfms=TSStandardize(by_sample=standardize_sample, by_var=standardize_var),arch=arch,
-                        arch_config= arch_config, cbs=FastAIPruningCallback(trial),
+                        arch_config= arch_config, metrics=[rmse], cbs=FastAIPruningCallback(trial), device=device,
                         loss_func=HuberLoss('mean',Huber_delta),seed=1)
-    print(arch_config)
-    with ContextManagers([learn.no_bar()]):
+    
+    with ContextManagers([learn.no_bar(),learn.no_logging()]):
             learn.fit_one_cycle(150, lr_max=learning_rate_model)
-            intermediate_value = learn.recorder.values[-1][1]
+            intermediate_value = learn.recorder.values[-1][-1]
 
     folder_path = "./optuna_tests/XceptionPlus/"
     if not os.path.exists(folder_path):
@@ -353,7 +356,7 @@ def objective_Xception(trial):
     return intermediate_value
 
 
-study_xc = run_optuna_study(objective_Xception,sampler= optuna.samplers.TPESampler(n_startup_trials=1000,seed=1),n_trials=5000,gc_after_trial=True,direction="minimize",show_plots=False)
+study_xc = run_optuna_study(objective_Xception,sampler= optuna.samplers.TPESampler(n_startup_trials=250,seed=1),n_trials=1000,gc_after_trial=True,direction="minimize",show_plots=False)
 
 print(f"O Melhor modelo foi o de número {study_xc.best_trial.number}")
 print(f""" Acesse a pasta optuna_tests/XceptionPlus/{study_xc.best_trial.number}.pickle e coloque o modelo no github """)
