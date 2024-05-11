@@ -294,7 +294,7 @@ archs = [
         ]
 
 def test_archs(epochs):
-    results = pd.DataFrame(columns=['arch', 'hyperparams', 'total params', 'train loss', 'valid loss', 'mae_valid','rmse_valid','mae_test','rmse_test','time'])
+    results = pd.DataFrame(columns=['arch', 'hyperparams', 'total params', 'train loss', 'valid loss', 'mae_valid','rmse_valid','time'])
     i=0
     for _, (arch, k) in enumerate(archs):
         print(arch.__name__)
