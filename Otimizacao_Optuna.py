@@ -26,6 +26,12 @@ from tsai.all import *
 import optuna
 from optuna.integration import FastAIPruningCallback
 
+from fastai.vision.all import *
+from fastai.text.all import *
+from fastai.collab import *
+from fastai.tabular.all import *
+
+
 os.environ["DEVICE"] = "cuda"
 
 """### Carregando os dados"""
