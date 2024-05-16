@@ -84,7 +84,7 @@ def objective_InceptionTimePlus(trial):
     
     standardize_sample = trial.suggest_categorical('by_sample', [True, False])
     standardize_var = trial.suggest_categorical('by_var', [True, False])
-    arch = XceptionTimePlus
+    arch = InceptionTimePlus
     learn = TSForecaster(X, y, splits=splits, path='models', tfms=tfms,
                         batch_tfms=TSStandardize(by_sample=standardize_sample, by_var=standardize_var),arch=arch,
                         arch_config= arch_config, metrics=[rmse], cbs=FastAIPruningCallback(trial), device=device,
