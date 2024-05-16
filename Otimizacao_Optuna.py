@@ -107,7 +107,7 @@ def objective_InceptionTimePlus(trial):
         # Carregar o melhor modelo salvo
         learn.load('best_model')
         # Obter o valor de RMSE da melhor época
-        intermediate_value = learn.recorder.metrics[-1][-1]
+        intermediate_value = learn.recorder.values[-1][-1]
     
     # Salvar o modelo e os resultados do trial
     folder_path = "./optuna_tests/objective_InceptionTimePlus/"
