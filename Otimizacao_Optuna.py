@@ -37,7 +37,7 @@ def cwd(path: str) -> None:
     """
     Context manager para mudar o diretório de trabalho.
     Mantém o diretório original após a execução do bloc
-
+    
     o de código.
     """
 
@@ -61,37 +61,41 @@ get_splits_len(splits) # [1806, 408, 408] ~= 70%,15%,15%
 
 """# Otimização do modelo selecionado com o Optuna"""
 
-def objective_Xception(trial):
-
-    nf = trial.suggest_int('nf', 16, 384)
-    adaptive_size = trial.suggest_int('adaptive_size', 10, 200)
+def objective_InceptionTimePlus(trial):
+    
+    nf = trial.suggest_int('nf', 16, 64)  # Número de filtros
+    fc_dropout = trial.suggest_float('fc_dropout', 0.0, 0.5)  # Dropout na camada fully connected
+    ks = trial.suggest_int('ks', 10, 50)  # Tamanho do kernel
+    conv_dropout = trial.suggest_float('conv_dropout', 0.0, 0.5)  # Dropout nas camadas convolucionais
+    sa = trial.suggest_categorical('sa', [True, False])  # Self-attention
+    se = trial.suggest_categorical('se', [True, False])  # Squeeze-and-Excitation
 
     arch_config = {
         'nf': nf,
-        'adaptive_size': adaptive_size,
+        'fc_dropout': fc_dropout,
+        'ks': ks,
+        'conv_dropout': conv_dropout,
+        'sa': sa,
+        'se': se
     }
 
     learning_rate_model = trial.suggest_float("learning_rate_model", 1e-5, 1e-2, log=True)  # search through all float values between 0.0 and 0.5 in log increment steps
-    Huber_delta = trial.suggest_float("Huber_delta", 1, 2)
-
-    standardize_sample = trial.suggest_categorical('by_sample', [True, False])
-    standardize_var = trial.suggest_categorical('by_var', [True, False])
-
-    arch = XceptionTimePlus
+    
+    arch = InceptionTimePlus
 
     learn = TSForecaster(X, y, splits=splits, path='models', tfms=tfms,
-                        batch_tfms=TSStandardize(by_sample=standardize_sample, by_var=standardize_var),arch=arch,
-                        arch_config= arch_config, metrics=[rmse], cbs=FastAIPruningCallback(trial), device=device,
-                        loss_func=HuberLoss('mean',Huber_delta),seed=1)
-
+                        batch_tfms=TSStandardize(),arch=arch,
+                        arch_config= arch_config, metrics=[rmse], cbs=FastAIPruningCallback(trial), device=default_device(),
+                        loss_func=HuberLoss('mean'),seed=1)
+    
     with ContextManagers([learn.no_bar(),learn.no_logging()]):
-            learn.fit_one_cycle(200, lr_max=learning_rate_model)
+            learn.fit_one_cycle(550, lr_max=learning_rate_model)
             intermediate_value = learn.recorder.values[-1][-1]
 
-    folder_path = "./optuna_tests/XceptionPlus/"
+    folder_path = "./optuna_tests/objective_InceptionTimePlus/"
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
-
+    
     file_path = os.path.join(folder_path, "{}.pickle".format(trial.number))
     if os.path.exists(file_path):
         os.remove(file_path)
@@ -103,6 +107,6 @@ def objective_Xception(trial):
     return intermediate_value
 
 
-study_xc = run_optuna_study(objective_Xception,sampler= optuna.samplers.TPESampler(n_startup_trials=250,seed=1),n_trials=1000,gc_after_trial=True,direction="minimize",show_plots=False)
+study_ic = run_optuna_study(objective_InceptionTimePlus,sampler= optuna.samplers.TPESampler(n_startup_trials=100,seed=1),n_trials=250,gc_after_trial=True,direction="minimize",show_plots=False)
 
-print(f"O Melhor modelo foi o de número {study_xc.best_trial.number}")
+print(f"O Melhor modelo foi o de número {study_ic.best_trial.number}")
