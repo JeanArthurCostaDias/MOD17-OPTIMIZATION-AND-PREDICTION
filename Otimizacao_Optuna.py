@@ -124,8 +124,7 @@ def objective_InceptionTimePlus(trial):
     return intermediate_value
 
 # Configurar e rodar o estudo Optuna
-study_ic = optuna.create_study(sampler=optuna.samplers.TPESampler(n_startup_trials=500, seed=1), direction="minimize")
-study_ic.optimize(objective_InceptionTimePlus, n_trials=1500)
+study_ic = run_optuna_study(objective_InceptionTimePlus,sampler= optuna.samplers.TPESampler(n_startup_trials=500,seed=1),n_trials=1500,gc_after_trial=True,direction="minimize",show_plots=False)
 
 print(f"O Melhor modelo foi o de número {study_ic.best_trial.number}")
 print("Best hyperparameters: ", study_ic.best_trial.params)
