@@ -24,8 +24,7 @@ from scipy.stats import pearsonr,kruskal
 from sklearn.metrics import mean_absolute_error, mean_squared_error,r2_score
 from tsai.all import *
 import optuna
-from optuna.integration import FastAIPruningCallback
-
+from optuna.integration import FastAIV2PruningCallback
 from fastai.vision.all import *
 from fastai.text.all import *
 from fastai.collab import *
@@ -94,7 +93,7 @@ def objective_InceptionTimePlus(trial):
                          batch_tfms=TSStandardize(by_sample=standardize_sample, by_var=standardize_var),
                          arch=arch, arch_config=arch_config, metrics=[rmse],
                          cbs=[
-                             FastAIPruningCallback(trial),
+                             FastAIV2PruningCallback(trial, monitor='_rmse'),
                              SaveModel(monitor='_rmse', comp=np.less, fname='best_model',with_opt=True,verbose=True),
                          ],
                          device=device, loss_func=HuberLoss('mean', Huber_delta), seed=1)
