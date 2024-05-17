@@ -97,8 +97,8 @@ def objective_InceptionTimePlus(trial):
                          arch=arch, arch_config=arch_config, metrics=[rmse],
                          cbs=[
                              FastAIPruningCallback(trial),
-                             SaveModelCallback(monitor='rmse', comp=np.less, fname='best_model',with_opt=True),
-                             EarlyStoppingCallback(monitor='rmse', patience=15)
+                             SaveModelCallback(monitor='_rmse', comp=np.less, fname='best_model',with_opt=True,verbose=True),
+                             EarlyStoppingCallback(monitor='_rmse', patience=15)
                          ],
                          device=device, loss_func=HuberLoss('mean', Huber_delta), seed=1)
     
