@@ -96,7 +96,6 @@ def objective_InceptionTimePlus(trial):
                          cbs=[
                              FastAIPruningCallback(trial),
                              SaveModel(monitor='_rmse', comp=np.less, fname='best_model',with_opt=True,verbose=True),
-                             EarlyStoppingCallback(monitor='_rmse',comp=np.less, patience=15)
                          ],
                          device=device, loss_func=HuberLoss('mean', Huber_delta), seed=1)
     
@@ -105,7 +104,9 @@ def objective_InceptionTimePlus(trial):
         # Carregar o melhor modelo salvo
         learn.load('best_model')
         # Obter o valor de RMSE da melhor época
-        intermediate_value = learn.recorder.values[-1][-1]
+        raw_preds, target, preds = learn.get_X_preds(X[splits[1]], y[splits[1]])
+        #print(mean_squared_error(y_true=target,y_pred=raw_preds,squared=False))
+        intermediate_value = mean_squared_error(y_true=target, y_pred=raw_preds, squared=False)
     
     # Salvar o modelo e os resultados do trial
     folder_path = "./optuna_tests/objective_InceptionTimePlus/"
