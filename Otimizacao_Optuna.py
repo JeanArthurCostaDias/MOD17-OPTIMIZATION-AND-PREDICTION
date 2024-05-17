@@ -100,7 +100,7 @@ def objective_InceptionTimePlus(trial):
                          ],
                          device=device, loss_func=HuberLoss('mean', Huber_delta), seed=1)
     
-    with learn.no_logging():
+    with ContextManagers([learn.no_bar()]):
         learn.fit_one_cycle(550, lr_max=learning_rate_model)
         # Carregar o melhor modelo salvo
         learn.load('best_model')
