@@ -69,16 +69,14 @@ get_splits_len(splits) # [1806, 408, 408] ~= 70%,15%,15%
 
 def objective_InceptionTimePlus(trial):
     # Definir os hiperparâmetros para otimização
-    nf = trial.suggest_int('nf', 16, 64)
-    nb_filters = trial.suggest_int('nb_filters', 32, 128)
-    fc_dropout = trial.suggest_float('fc_dropout', 0.0, 0.5)
-    ks = trial.suggest_int('ks', 10, 50)
-    conv_dropout = trial.suggest_float('conv_dropout', 0.0, 0.5)
+    nf = trial.suggest_int('nf', 16, 128)
+    fc_dropout = trial.suggest_float('fc_dropout', 0.0, 0.9)
+    ks = trial.suggest_int('ks', 10, 100)
+    conv_dropout = trial.suggest_float('conv_dropout', 0.0, 0.9)
     sa = trial.suggest_categorical('sa', [True, False])
     se = trial.suggest_categorical('se', [True, False])
     arch_config = {
         'nf': nf,
-        'nb_filters': nb_filters,
         'fc_dropout': fc_dropout,
         'ks': ks,
         'conv_dropout': conv_dropout,
