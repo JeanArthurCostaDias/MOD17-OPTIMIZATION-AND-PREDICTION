@@ -1,2 +1,2 @@
-# Remote-Sensing
-Código utilizado no artigo que será enviado para a GIS and Remote Sensing
+# MOD17 OPTIMIZATION AND PREDICTION
+Código utilizado no artigo "ENHANCING MODIS SATELLITE GPP PRODUCT ESTIMATION IN THE AMAZON REGION THROUGH PARAMETER OPTIMIZATION AND TIME SERIES DEEP LEARNING MODELING" submetido na revista 'GIScience & Remote Sensing'.
